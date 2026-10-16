@@ -1,0 +1,13 @@
+-- Illustrative PostgreSQL reporting schema. No real minors' records.
+CREATE TABLE IF NOT EXISTS campaign (campaign_id TEXT PRIMARY KEY, name TEXT NOT NULL, product TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS ad_daily (campaign_id TEXT REFERENCES campaign(campaign_id), report_date DATE NOT NULL, spend_inr NUMERIC(14,2) NOT NULL DEFAULT 0, impressions INTEGER NOT NULL DEFAULT 0, clicks INTEGER NOT NULL DEFAULT 0, reach INTEGER, frequency NUMERIC(8,3), PRIMARY KEY(campaign_id,report_date));
+CREATE TABLE IF NOT EXISTS lead (lead_id TEXT PRIMARY KEY, source TEXT NOT NULL, campaign_id TEXT REFERENCES campaign(campaign_id), created_at TIMESTAMPTZ NOT NULL);
+CREATE TABLE IF NOT EXISTS lead_stage_event (event_id TEXT PRIMARY KEY, lead_id TEXT REFERENCES lead(lead_id), stage TEXT NOT NULL, occurred_at TIMESTAMPTZ NOT NULL, UNIQUE(lead_id,stage,occurred_at));
+CREATE TABLE IF NOT EXISTS invoice (invoice_id TEXT PRIMARY KEY, lead_id TEXT REFERENCES lead(lead_id), category TEXT NOT NULL, amount_inr NUMERIC(14,2) NOT NULL, issued_at TIMESTAMPTZ NOT NULL, due_at TIMESTAMPTZ);
+CREATE TABLE IF NOT EXISTS payment (payment_id TEXT PRIMARY KEY, invoice_id TEXT REFERENCES invoice(invoice_id), amount_inr NUMERIC(14,2) NOT NULL, paid_at TIMESTAMPTZ NOT NULL, provider TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS enrollment (enrollment_id TEXT PRIMARY KEY, lead_id TEXT REFERENCES lead(lead_id), plan TEXT NOT NULL, started_on DATE, renews_on DATE);
+CREATE TABLE IF NOT EXISTS student (student_id TEXT PRIMARY KEY, alias TEXT NOT NULL, cohort TEXT NOT NULL, joined_on DATE);
+CREATE TABLE IF NOT EXISTS student_daily (student_id TEXT REFERENCES student(student_id), activity_date DATE NOT NULL, focus_minutes INTEGER, quiz_score NUMERIC(5,2), tasks_completed INTEGER, tasks_due INTEGER, PRIMARY KEY(student_id,activity_date));
+CREATE TABLE IF NOT EXISTS chapter_progress (student_id TEXT REFERENCES student(student_id), chapter_id TEXT NOT NULL, updated_at TIMESTAMPTZ NOT NULL, reading_done BOOLEAN DEFAULT FALSE, notes_done BOOLEAN DEFAULT FALSE, practice_accuracy NUMERIC(5,2), timed_paper_done BOOLEAN DEFAULT FALSE, exam_accuracy NUMERIC(5,2), PRIMARY KEY(student_id,chapter_id));
+CREATE TABLE IF NOT EXISTS session_event (session_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, scheduled_at TIMESTAMPTZ NOT NULL, conducted_at TIMESTAMPTZ);
+CREATE TABLE IF NOT EXISTS attendance_feedback (session_id TEXT REFERENCES session_event(session_id), student_id TEXT REFERENCES student(student_id), attended BOOLEAN, usefulness_rating NUMERIC(3,1), performance_score NUMERIC(5,2), PRIMARY KEY(session_id,student_id));
