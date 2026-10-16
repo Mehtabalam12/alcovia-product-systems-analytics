@@ -1,0 +1,102 @@
+{
+  "name": "Alcovia DEMO | Student engagement exception",
+  "nodes": [
+    {
+      "id": "run-demo",
+      "name": "Run demo",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        140,
+        260
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "synthetic-inputs",
+      "name": "Synthetic inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        260
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [{json:{student_id:'STU-014',alias:'Student 14',advisor:'advisor-01',focus_last_7d:15,focus_prev_7d:130,missed_deadlines:3,quiz_participation_7d:1}},{json:{student_id:'STU-006',alias:'Student 06',advisor:'advisor-02',focus_last_7d:160,focus_prev_7d:140,missed_deadlines:0,quiz_participation_7d:6}},{json:{student_id:'STU-019',alias:'Student 19',advisor:'advisor-03',focus_last_7d:20,focus_prev_7d:90,missed_deadlines:2,quiz_participation_7d:2}}];"
+      }
+    },
+    {
+      "id": "apply-exception-rules",
+      "name": "Apply exception rules",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        670,
+        260
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return $input.all().map(x=>{const s=x.json;const fall=s.focus_prev_7d>0?(s.focus_prev_7d-s.focus_last_7d)/s.focus_prev_7d:null;const low=fall!==null&&fall>=0.6&&s.missed_deadlines>=2;return {json:{...s,focus_decline_ratio:fall,requires_checkin:low}}}).filter(x=>x.json.requires_checkin);"
+      }
+    },
+    {
+      "id": "prepare-queue-records",
+      "name": "Prepare queue records",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        260
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return $input.all().map(x=>({json:{queue:'student_advisor_review',student_id:x.json.student_id,advisor:x.json.advisor,reason:'Focus declined 60%+ AND two or more missed deadlines',focus_decline_pct:Math.round(x.json.focus_decline_ratio*100),idempotency_key:['student_engagement',x.json.student_id,'2026-W42'].join(':'),recommended_action:'Private advisor review; listen to student context before any parent escalation',write_performed:false}}));"
+      }
+    }
+  ],
+  "connections": {
+    "Run demo": {
+      "main": [
+        [
+          {
+            "node": "Synthetic inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Synthetic inputs": {
+      "main": [
+        [
+          {
+            "node": "Apply exception rules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply exception rules": {
+      "main": [
+        [
+          {
+            "node": "Prepare queue records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": [],
+  "meta": {
+    "description": "Importable illustrative workflow only; manual trigger; no external API calls or production write operations."
+  }
+}
