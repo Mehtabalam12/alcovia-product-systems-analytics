@@ -1,0 +1,102 @@
+{
+  "name": "Alcovia DEMO | Lead stage SLA",
+  "nodes": [
+    {
+      "id": "run-demo",
+      "name": "Run demo",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        140,
+        260
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "synthetic-inputs",
+      "name": "Synthetic inputs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        260
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [{json:{lead_id:'LEAD-201',stage:'qualified',entered_at:'2026-10-08',owner:'growth-team'}},{json:{lead_id:'LEAD-202',stage:'discovery_scheduled',entered_at:'2026-10-12',owner:'sales-team'}},{json:{lead_id:'LEAD-203',stage:'paid',entered_at:'2026-10-10',owner:'onboarding'}}];"
+      }
+    },
+    {
+      "id": "apply-exception-rules",
+      "name": "Apply exception rules",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        670,
+        260
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const asOf=new Date('2026-10-16T00:00:00Z');const limits={qualified:2,discovery_scheduled:2,ambition_attended:3,architect_attended:3};return $input.all().map(x=>{const l=x.json;const days=Math.max(0,Math.floor((asOf-new Date(l.entered_at+'T00:00:00Z'))/86400000));return {json:{...l,days_in_stage:days,sla_days:limits[l.stage]??null,overdue:limits[l.stage]!==undefined&&days>limits[l.stage]}}}).filter(x=>x.json.overdue);"
+      }
+    },
+    {
+      "id": "prepare-queue-records",
+      "name": "Prepare queue records",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        260
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return $input.all().map(x=>({json:{queue:'lead_follow_up',lead_id:x.json.lead_id,owner:x.json.owner,exception:'Stage SLA exceeded',days_in_stage:x.json.days_in_stage,sla_days:x.json.sla_days,idempotency_key:['lead_sla',x.json.lead_id,x.json.stage,'2026-10-16'].join(':'),recommended_action:'Request sales-owner review; do not automatically contact a minor',write_performed:false}}));"
+      }
+    }
+  ],
+  "connections": {
+    "Run demo": {
+      "main": [
+        [
+          {
+            "node": "Synthetic inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Synthetic inputs": {
+      "main": [
+        [
+          {
+            "node": "Apply exception rules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply exception rules": {
+      "main": [
+        [
+          {
+            "node": "Prepare queue records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": [],
+  "meta": {
+    "description": "Importable illustrative workflow only; manual trigger; no external API calls or production write operations."
+  }
+}
